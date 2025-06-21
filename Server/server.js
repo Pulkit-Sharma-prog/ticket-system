@@ -35,19 +35,21 @@ db.run(`
 
 // API routes
 app.post("/api/tickets", (req, res) => {
-  const { name = "", email = "", message = "" } = req.body || {};
+  const body = req.body;
 
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: "All fields are required." });
+  if (!body || !body.name || !body.email || !body.message) {
+    return res.status(400).json({ error: "Missing required fields." });
   }
+
+  const { name, email, message } = body;
 
   db.run(
     `INSERT INTO tickets (name, email, message) VALUES (?, ?, ?)`,
     [name, email, message],
     function (err) {
       if (err) {
-        console.error("Insert error:", err.message);
-        return res.status(500).json({ error: "Database insert failed." });
+        console.error("Database insert error:", err.message);
+        return res.status(500).json({ error: "Database error." });
       }
 
       res.status(201).json({
@@ -57,6 +59,7 @@ app.post("/api/tickets", (req, res) => {
     }
   );
 });
+
 
 app.get("/api/export", (req, res) => {
   db.all(`SELECT * FROM tickets`, [], (err, rows) => {
