@@ -2,36 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ticket System</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Helpdesk Ticket System</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Submit Your Issue</h1>
-  <form id="ticketForm">
-    <input type="text" name="name" placeholder="Your Name" required />
-    <input type="text" name="department" placeholder="Department" required />
-    <textarea name="issue" placeholder="Describe your issue..." required></textarea>
-    <button type="submit">Submit Ticket</button>
-  </form>
+  <div class="container">
+    <h1>🛠️ Raise a Ticket</h1>
+    <form action="https://ticket-backend-3pvr.onrender.com/api/tickets" method="POST">
+      <input type="text" name="name" placeholder="Your Name" required />
+      <input type="email" name="email" placeholder="Your Email" required />
+      <input type="text" name="department" placeholder="Department" required />
+      <textarea name="issue" placeholder="Describe your issue..." required></textarea>
+      <button type="submit">Submit Ticket</button>
+    </form>
 
-  <script>
-    document.getElementById("ticketForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        name: form.name.value,
-        department: form.department.value,
-        issue: form.issue.value,
-      };
-      await fetch("https://your-backend-url.onrender.com/api/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      alert("Ticket submitted successfully!");
-      form.reset();
-    });
-  </script>
+    <!-- 👇 This will be hidden from users -->
+    <div class="admin-only">
+      <a href="https://ticket-backend-3pvr.onrender.com/api/export?password=admin123" target="_blank">
+        📁 Download Tickets (Admin Only)
+      </a>
+    </div>
+  </div>
 </body>
 </html>
