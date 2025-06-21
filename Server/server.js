@@ -3,50 +3,83 @@ const cors = require("cors");
 const sqlite3 = require("sqlite3").verbose();
 const fs = require("fs");
 const path = require("path");
+const { Parser } = require("json2csv");
 
 const app = express();
-const db = new sqlite3.Database("tickets.db");
+const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Database
+const db = new sqlite3.Database("./tickets.db", (err) => {
+  if (err) {
+    console.error("Error connecting to SQLite:", err.message);
+  } else {
+    console.log("Connected to SQLite DB ✅");
+  }
+});
 
 // Create table if not exists
-db.run(`CREATE TABLE IF NOT EXISTS tickets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT,
-  department TEXT,
-  issue TEXT,
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+db.run(`
+  CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    email TEXT,
+    message TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
-// API to receive ticket
+// API routes
 app.post("/api/tickets", (req, res) => {
-  const { name, department, issue } = req.body;
-  db.run(`INSERT INTO tickets (name, department, issue) VALUES (?, ?, ?)`,
-    [name, department, issue],
-    (err) => {
-      if (err) return res.status(500).send("DB error");
-      res.status(200).send("Ticket received");
+  const { name = "", email = "", message = "" } = req.body || {};
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  db.run(
+    `INSERT INTO tickets (name, email, message) VALUES (?, ?, ?)`,
+    [name, email, message],
+    function (err) {
+      if (err) {
+        console.error("Insert error:", err.message);
+        return res.status(500).json({ error: "Database insert failed." });
+      }
+
+      res.status(201).json({
+        message: "Ticket submitted successfully!",
+        ticketId: this.lastID,
+      });
     }
   );
 });
 
-// Admin-only CSV export
 app.get("/api/export", (req, res) => {
-  if (req.query.password !== "admin123") return res.status(403).send("Forbidden");
+  db.all(`SELECT * FROM tickets`, [], (err, rows) => {
+    if (err) {
+      console.error("Export error:", err.message);
+      return res.status(500).json({ error: "Failed to export tickets." });
+    }
 
-  const filePath = path.join(__dirname, "tickets.csv");
-  const stream = fs.createWriteStream(filePath);
-  stream.write("ID,Name,Department,Issue,CreatedAt\n");
+    const parser = new Parser();
+    const csv = parser.parse(rows);
 
-  db.all("SELECT * FROM tickets", [], (err, rows) => {
-    if (err) return res.status(500).send("Export error");
-    rows.forEach(row => {
-      stream.write(`${row.id},"${row.name}","${row.department}","${row.issue}","${row.createdAt}"\n`);
+    const filePath = path.join(__dirname, "tickets.csv");
+    fs.writeFileSync(filePath, csv);
+
+    res.download(filePath, "tickets.csv", (err) => {
+      if (err) {
+        console.error("Download error:", err.message);
+      }
     });
-    stream.end(() => res.download(filePath));
   });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running at http://localhost:${PORT}`);
+});
